@@ -1,0 +1,41 @@
+pipeline {
+    agent any
+
+    environment {
+        REPO_URL = 'https://github.com/tu-usuario/api-festivos.git'
+        CREDENCIAL_ID = 'GITHUB_ID'
+        RAMA = 'main'
+    }
+
+    stages {
+        stage('Descargar código fuente') {
+            steps {
+                echo "Descargando código de GitHub..."
+                checkout([$class: 'GitSCM',
+                    branches: [[name: "*/${env.RAMA}"]],
+                    userRemoteConfigs: [[
+                        credentialsId: "${env.CREDENCIAL_ID}",
+                        url: "${env.REPO_URL}"
+                    ]]
+                ])
+            }
+        }
+
+        stage('Desplegar contenedor usando Docker-Compose') {
+            steps {
+                echo "Ejecutando docker-compose..."
+                sh 'docker compose up -d --build apicalendario'
+                sh 'docker image prune -f'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "¡Pipeline finalizado con éxito!"
+        }
+        failure {
+            echo "Error en el pipeline. Revisa los logs."
+        }
+    }
+}

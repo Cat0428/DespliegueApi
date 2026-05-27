@@ -1,0 +1,84 @@
+services:
+
+  bdfestivos:
+    image: mongo:7
+    container_name: dockerbdfestivos
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ./bdFestivos/iniciarBDFestivos.js:/docker-entrypoint-initdb.d/iniciarBDFestivos.js:ro
+    networks:
+      - redcalendario
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  apifestivos:
+    build:
+      context: ./apiFestivos
+    container_name: dockerapifestivos
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      MONGO_URI: mongodb://bdfestivos:27017/db_festivos
+    ports:
+      - "3000:3000"
+    depends_on:
+      bdfestivos:
+        condition: service_healthy
+    networks:
+      - redcalendario
+
+  bdcalendario:
+    build:
+      context: ./bdCalendario
+    container_name: dockerbdcalendario
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: calendariolaboral
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - redcalendario
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d calendariolaboral"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  apicalendario:
+    build:
+      context: ./apiCalendario
+    container_name: dockerapicalendario
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://bdcalendario:5432/calendariolaboral
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: 1234
+      FESTIVOS_EXTERNO_URL: http://dockerapifestivos:3000/api/festivos/listar
+    ports:
+      - "8081:8081"
+    depends_on:
+      bdcalendario:
+        condition: service_healthy
+      apifestivos:
+        condition: service_started
+    networks:
+      - redcalendario
+
+networks:
+  redcalendario:
+    driver: bridge
+
+volumes:
+  mongo_data:
+  postgres_data:

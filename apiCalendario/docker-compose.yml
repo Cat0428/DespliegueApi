@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+
+  dockerbdfestivos:
+    image: mongo:latest
+    container_name: dockerbdfestivos
+    networks:
+      - redcalendario
+    ports:
+      - "27018:27017"
+
+  dockerapifestivos:
+    image: apifestivos
+    container_name: dockerapifestivos
+    networks:
+      - redcalendario
+    ports:
+      - "3000:3000"
+    depends_on:
+      - dockerbdfestivos
+
+  dockerbdcalendario:
+    image: bdcalendario
+    container_name: dockerbdcalendario
+    networks:
+      - redcalendario
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_PASSWORD: 1234
+
+  dockerapicalendario:
+    image: apicalendario
+    container_name: dockerapicalendario
+    networks:
+      - redcalendario
+    ports:
+      - "8080:8080"
+    depends_on:
+      - dockerbdcalendario
+      - dockerapifestivos
+
+networks:
+  redcalendario:
+    external: true
