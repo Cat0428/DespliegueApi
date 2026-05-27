@@ -24,7 +24,7 @@ pipeline {
         stage('Desplegar contenedor usando Docker-Compose') {
             steps {
                 echo "Ejecutando docker-compose..."
-                sh 'docker compose up --detach --build apicalendario'
+                sh 'docker-compose up --build apicalendario'
                 sh 'docker image prune -f'
             }
         }
